@@ -245,6 +245,7 @@ class ThinkfulPerson(object):
 			"Last Name" : self.email,
 			"Lead Status" : "Signed up",
 			"Lead Source" : self.lead_source,
+			"Lead Owner" : self.contact_owner,
 			"Signed up at" : self.signup_date,
 		}
 		lead = self._rm_nones(lead)
