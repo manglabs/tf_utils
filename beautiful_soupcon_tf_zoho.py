@@ -1,19 +1,28 @@
 
 #################
 #
-# A parser and migrator class for interfacing w/ Zoho
+# A parser and migrator class for Thinkful interfacing w/ Zoho
 # The parser is Thinkful specific, but the Zoho stuff is all generic.
+#
 # Requires the mfabrik.zoho lib
 #
-# TODO dates should be parsed as dates; not strings
+# The methods from_tf_* all take lists of Person data
+# in the format that Thinkful used in its homegrown, GDocs spreadsheet
+# CRMs. They normalize the data into a consistent view of a ThinkfulPerson,
+# with fields left as None when their values aren't available.
+#
+# The methods from_zoho_* parse data from Zoho's API into a 
+# consistent ThinkfulPerson object with fields left as None when their 
+# values aren't available.
+# 
+# Note the unexpected use of "add_raw_..." and "update_..." methods. 
+# See inline comments.
 # 
 #################
 
+from datetime import datetime
 
 class ThinkfulPerson(object):
-
-    def __init__(self, crm_conn):
-        self.crm = crm_conn
 
     def _parse_name(self, name):
         first_name = name.split(" ")[0]
@@ -26,27 +35,32 @@ class ThinkfulPerson(object):
     def _parse_date(self, d):
         if not d:
             return None
-        (m,d,y) = map(int, d.split('/'))
-        return "%s-%02d-%02d" % (y,m,d)
+        if d.count('-') == 2:
+            (y,m,d) = map(int, d.split('-'))
+        elif d.count('/') == 2:
+            (m,d,y) = map(int, d.split('/'))
+        else:
+            raise Exception("Cannot parse date '%s'" % d)
+        return datetime(year=y, month=m, day=d)
     def _calc_close_date(self, d):
-        (y,m,d) = map(int, d.split('-'))
-        dt = datetime(year=y, month=m, day=d)
-        close_dt = dt + timedelta(weeks=4)
-        return close_dt.strftime("%Y-%m-%d")
+        # Semi-randomly: 4 weeks is our current drip campaign length
+        return dt + timedelta(weeks=4)
+    def _dt2zoho(self, d):
+        return "%s-%02d-%02d" % (d.year, d.month, d.day)
     def _rm_nones(self, d):
         d2 = {}
         for key, val in d.items():
             if val:
                 d2[key] = val
         return d2
-
 	def _parse_note(self, r, f, n):
 		if r[n] is None or r[n].strip() == u"":
 			return u""
+		# Zoho doesn't handle unicode :(
 		return u" - %s: %s\n" % (f, r[n].decode('utf-8').encode('ascii', 'ignore'))
 
 	@staticmethod
-	def from_applicants_tab(r):
+	def from_tf_applicants_tab(r):
 		assert type(r) == list, "Expecting a list. Got %s" % type(r)
 		assert len(r) == 14, "Array unexpected length: %s" % len(r)
 		#['Name', 'Email Address', 'Signup Date', 'Owner', 'Response 1st Email?', 
@@ -54,14 +68,13 @@ class ThinkfulPerson(object):
 		# 'Price Quoted', 'Price Reaction', 'Status', 'How Found TF?', 
 		# 'Lead source', 'Goals', 'Notes']
 
-		tp = ThinkfulPerson(None)
+		tp = ThinkfulPerson()
 		tp.email = r[1]
 		tp.first_name, tp.last_name = tp._parse_name(r[0])
 		tp.signup_date = tp._parse_date(r[2])
 		tp.closing_date = tp._calc_close_date(tp.signup_date)
 		tp.lead_source = None if r[11].strip() is "" else r[11]
 		tp.exact_lead_source = r[10]
-		tp.close_date = tp._parse_date(r[2])
 		tp.phone = None
 		tp.contact_type = "Student"
 		tp.contact_owner = None if r[3].strip() is "" else "%s@thinkful.com" % (r[3].lower())
@@ -86,7 +99,7 @@ class ThinkfulPerson(object):
 		return tp
 
 	@staticmethod
-	def from_students_tab(r, funnel_stage):
+	def from_tf_students_tab(r, funnel_stage):
 		#['Name', 'How they found us', 'Lead source', 'Seeking job?', "What's in their syllabus", 
 		# 'Email signup date', 'Close date', 'Price', 'Coach Intro?', 'Billed?', 
 		# 'Paid?', 'Start Date', 'Address', 'Email', 'Content, Accounts', 
@@ -97,7 +110,7 @@ class ThinkfulPerson(object):
 		# Address,Email,"Content, Accounts",Outcome,End Date,Phone number
 
 
-		tp = ThinkfulPerson(None)
+		tp = ThinkfulPerson()
 		tp.email = r[13]
 		tp.first_name, tp.last_name = tp._parse_name(r[0])
 		tp.closing_date = tp._parse_date(r[11])# class start date is deal close date
@@ -126,13 +139,13 @@ class ThinkfulPerson(object):
 		return tp
 
 	@staticmethod
-	def from_citi_tab(r):
+	def from_tf_citi_tab(r):
 		#['Name', 'Email', 'January Followup', 'Current Status', 'Phone', 'City', 
 		# 'Linkedin', 'Followup', 'Signup date', "What you're hoping to get out 
 		# of it. Ability to commit time. Current position.", 'Decision Sent', 
 		# 'How found Thinkful', 'Price Point', '']
 
-		tp = ThinkfulPerson(None)
+		tp = ThinkfulPerson()
 		tp.email = r[1]
 		tp.first_name, tp.last_name = tp._parse_name(r[0])
 		tp.funnel_stage = "Verbal close" if r[2].lower() == 'yes' else "Closed Lost"
@@ -157,12 +170,12 @@ class ThinkfulPerson(object):
 		return tp
 
 	@staticmethod
-	def from_newsletter_processing_tab(r):
+	def from_tf_newsletter_processing_tab(r):
 		# ['Name', 'Email Address', 'Funnel Stage?', 
 		# 'Date of Most Recent Email?', 'Date of Most Recent Response?', 
 		# 'Notes']
 
-		tp = ThinkfulPerson(None)
+		tp = ThinkfulPerson()
 		tp.email = r[1]
 		tp.first_name, tp.last_name = tp._parse_name(r[0])
 		tp.funnel_stage = r[2]
@@ -171,7 +184,7 @@ class ThinkfulPerson(object):
 		tp.phone = None
 		tp.lead_source = None
 		tp.signup_date = None
-		tp.closing_date = tp._calc_close_date('2013-03-23')
+		tp.closing_date = tp._calc_close_date(datetime(year=2013, month=3, day=23))
 		tp.exact_lead_source = None
 		tp.contact_type = "Student"
 		tp.contact_owner = "nora@thinkful.com"
@@ -197,7 +210,7 @@ class ThinkfulPerson(object):
                 return None
             return v
 
-        tp = ThinkfulPerson(None)
+        tp = ThinkfulPerson()
         tp.zoho_contact_id = g('CONTACTID')
         tp.email = g('Email')
         # this is dumb. I should be able to query for it.
@@ -217,12 +230,12 @@ class ThinkfulPerson(object):
                 return None
             return v.strip()
 
-        tp = ThinkfulPerson(None)
+        tp = ThinkfulPerson()
         tp.zoho_contact_id = g('CONTACTID')
         tp.email = g('Email')
         tp.first_name = g('First Name')
         tp.last_name = g('Last Name')
-        tp.signup_date = g('Signed up at') or g('Created Time').split(' ')[0]
+        tp.signup_date = tp._parse_date(g('Signed up at') or g('Created Time').split(' ')[0])
         tp.funnel_stage = None
         return tp
 
@@ -236,16 +249,16 @@ class ThinkfulPerson(object):
             if not v or not v.strip() or v.strip() == 'null':
                 return None
             return v.strip()
-        tp = ThinkfulPerson(None)
+        tp = ThinkfulPerson()
         tp.first_name = g('First Name')
         tp.last_name = g('Last Name')
         tp.email = g('Email')
         tp.zoho_lead_id = g('LEADID')
-        tp.signup_date = g('Created Time').split(' ')[0]
+        tp.signup_date = tp._parse_date(g('Created Time').split(' ')[0])
         tp.funnel_stage = 'Signed up'
         return tp
     
-	def add_as_raw_lead(self):
+	def add_as_raw_lead(self, crm):
 		assert self.is_lead
 		log("Adding lead: %s" % self)
 		lead = {
@@ -254,7 +267,7 @@ class ThinkfulPerson(object):
 			"Lead Status" : "Signed up",
 			"Lead Source" : self.lead_source,
 			"Lead Owner" : self.contact_owner,
-			"Signed up at" : self.signup_date,
+			"Signed up at" : self._dt2zoho(self.signup_date),
 		}
 		lead = self._rm_nones(lead)
 		
@@ -262,12 +275,12 @@ class ThinkfulPerson(object):
 		self.lead_id = leads[0]['Id']
 		return lead
 
-	def add_as_raw_contact(self):
+	def add_as_raw_contact(self, crm):
 		log("Adding contact: %s" % self)
 		contact = {
 			"Email" : self.email,
 			"Last Name" : self.email,
-			"Signed up at" : self.signup_date,
+			"Signed up at" : self._dt2zoho(self.signup_date),
 			"Contact Type" : self.contact_type,
 			"Contact Owner" : self.contact_owner,
 		}
@@ -276,23 +289,23 @@ class ThinkfulPerson(object):
 		self.potential_id = contacts[0]['Id']
 		return contact
 
-	def add_as_raw_potential(self):
+	def add_as_raw_potential(self, crm):
 		assert self.is_potential
 		log("Adding potential: %s" % self)
 		potential = {
-			"Closing Date": self.closing_date,
 			"Potential Name": self.email,
 			"Stage": self.funnel_stage,
 			"Contact Name": self.email,
 			"Lead Source" : self.lead_source,
 			"Exact lead source" : self.exact_lead_source,
-			"Signed up at" : self.signup_date,
+			"Closing Date": self._dt2zoho(self.closing_date),
+			"Signed up at" : self._dt2zoho(self.signup_date),
 			"Potential Owner" : self.contact_owner,
 		}
 		potential = self._rm_nones(potential)
 		return crm.insert_potentials([potential])
 
-	def add_note(self, entity_id):
+	def add_note(self, crm, entity_id):
 		assert self.notes
 		note = {
 			"entityId" : entity_id,
@@ -302,7 +315,10 @@ class ThinkfulPerson(object):
 		note = self._rm_nones(note)
 		return crm.insert_notes([note])
 
-	def update_contact(self):
+	def update_contact(self, crm):
+		"""Zoho has trouble matching leads / contacts. Splitting them
+		into two updates helps when the matching datum (like last name) 
+		is changed mid-update."""
 		log("Updating contact: %s" % self)
 
 		contact = {}
@@ -315,7 +331,10 @@ class ThinkfulPerson(object):
 		e("Phone", self.phone)
 		crm.insert_contacts([contact])
 
-	def update_lead(self):
+	def update_lead(self, crm):
+		"""Zoho has trouble matching leads / contacts. Splitting them
+		into two updates helps when the matching datum (like last name) 
+		is changed mid-update."""
 		log("Updating lead: %s" % self)
 
 		lead = {}
@@ -328,31 +347,34 @@ class ThinkfulPerson(object):
 		e("Phone", self.phone)
 		crm.insert_leads([lead])
 
-	def send2zoho(self):
+	def send2zoho(self, crm):
 		if self.is_lead:
-			self.add_as_raw_lead()
+			self.add_as_raw_lead(crm)
 			if self.notes:
-				self.add_note(self.lead_id)
-			self.update_lead()
+				self.add_note(crm, self.lead_id)
+			self.update_lead(crm)
 		elif self.is_potential:
-			self.add_as_raw_contact()
-			self.add_as_raw_potential()
+			self.add_as_raw_contact(crm)
+			self.add_as_raw_potential(crm)
 			if self.notes:
-				self.add_note(self.potential_id)
-			self.update_contact()
+				self.add_note(crm, self.potential_id)
+			self.update_contact(crm)
 		else:
 			raise Exception("Unknown person type! Neither lead nor potential?")
 
     def __str__(self):
-        try:
-            return self.__unicode__().decode('utf-8').encode('ascii', 'ignore')
-        except Exception:
-            return "CANNOT PRINT %s" % self.email
+           return self.__unicode__().decode('utf-8').encode('ascii', 'ignore')
     def __unicode__(self):
-        return "%s %s (%s) @ %s" % (self.first_name, self.last_name, self.email, self.funnel_stage)
-
+        return "%s %s (%s) @ %s" % (self.first_name, self.last_name, \
+        	self.email, self.funnel_stage)
 
 def _stitch_pages(f):
+    """Zoho limits the number of records per request to 200. 
+    We use this to combine all results behind the scenes into a 
+    single result set.
+
+    Note this can hose your API quota if you have a lot of entries.
+    """
     records = []
     from_index=1
     to_index=200
@@ -366,12 +388,12 @@ def _stitch_pages(f):
         to_index += 200
     return records
 
-def get_zoho_contacts(crm):# TODO , from_index=300, to_index=310
+def get_zoho_contacts(crm):
+    """Returns ALL contacts in the CRM. Note multiple API calls."""
+    print "Getting all contacts..."
     tf_people = {}
     for c in _stitch_pages(crm.get_contacts):
         tfp = ThinkfulPerson.from_zoho_contact(c)
         tf_people[tfp.zoho_contact_id] = tfp
     return tf_people
-
-
 
