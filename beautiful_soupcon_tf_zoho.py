@@ -201,6 +201,26 @@ class ThinkfulPerson(object):
         return tp
 
     @staticmethod
+    def from_tf_prototype_tfcom(r):
+        # ['email']
+
+        tp = ThinkfulPerson()
+        tp.email = r[0]
+        tp.first_name, tp.last_name = (None, None)
+        tp.funnel_stage = 'Signed up'
+        tp.last_modified = None
+        tp.notes = None
+        tp.phone = None
+        tp.lead_source = "Other"
+        tp.exact_lead_source = "prototype site thinkful.com - filtered"
+        tp.signup_date = datetime(year=2012, month=10, day=1)
+        tp.closing_date = tp._calc_close_date(tp.signup_date)
+        tp.contact_type = "Student"
+        tp.contact_owner = "dan@thinkful.com"
+        tp.is_lead = True
+        tp.is_potential = False
+
+    @staticmethod
     def from_zoho_potential(r):
         #{u'Contact Name': u'Michael Simpson', u'CONTACTID': u'783072000000155159', 
         # u'Email': u'mgsimpson1@gmail.com', u'Phone': u'null'}
