@@ -33,12 +33,12 @@ class ThinkfulPerson(object):
             last_name = None
         return (first_name, last_name)
     def _parse_date(self, d):
-        if not d:
+        if not d or d == 'null':
             return None
         if d.count('-') == 2:
-            (y,m,d) = map(int, d.split('-'))
+            (y,m,d) = map(int, d.split(' ')[0].split('-'))
         elif d.count('/') == 2:
-            (m,d,y) = map(int, d.split('/'))
+            (m,d,y) = map(int, d.split(' ')[0].split('/'))
         else:
             raise Exception("Cannot parse date '%s'" % d)
         return datetime(year=y, month=m, day=d)
@@ -57,7 +57,11 @@ class ThinkfulPerson(object):
         if r[n] is None or r[n].strip() == u"":
             return u""
         # Zoho doesn't handle unicode :(
-        return u" - %s: %s\n" % (f, r[n].decode('utf-8').encode('ascii', 'ignore'))
+        try:
+            return u" - %s: %s\n" % (f, r[n].decode('utf-8').encode('ascii', 'ignore'))
+        except UnicodeEncodeError:
+            print "*** Unicode error parsing note for '%s' N %s" % (f, n)
+            return " - %s: UnicodeEncodeError" % (f)
 
     @staticmethod
     def from_tf_applicants_tab(r):
@@ -255,7 +259,9 @@ class ThinkfulPerson(object):
         tp.email = g('Email')
         tp.first_name = g('First Name')
         tp.last_name = g('Last Name')
-        tp.signup_date = tp._parse_date(g('Signed up at') or g('Created Time').split(' ')[0])
+        tp.contact_type = g('Contact Type')
+        # tp.signup_date = tp._parse_date(g('Signed up at') or g('Created Time').split(' ')[0])
+        tp.signup_date = tp._parse_date(g('Signed up at'))
         tp.funnel_stage = None
         return tp
 
@@ -273,9 +279,12 @@ class ThinkfulPerson(object):
         tp.first_name = g('First Name')
         tp.last_name = g('Last Name')
         tp.email = g('Email')
+        tp.contact_type = "Student"
         tp.zoho_lead_id = g('LEADID')
-        tp.signup_date = tp._parse_date(g('Created Time').split(' ')[0])
-        tp.funnel_stage = 'Signed up'
+        # TODO set to signup_date once they're all backfilled
+        tp.created_date = tp._parse_date(g('Created Time'))
+        tp.signup_date = tp._parse_date(g('Signed up at'))
+        tp.funnel_stage = g('Lead Status')
         return tp
 
     def add_as_raw_lead(self, crm):
@@ -383,9 +392,9 @@ class ThinkfulPerson(object):
             raise Exception("Unknown person type! Neither lead nor potential?")
 
     def __str__(self):
-           return self.__unicode__().decode('utf-8').encode('ascii', 'ignore')
+        return self.__unicode__().encode('utf-8', 'ignore')
     def __unicode__(self):
-        return "%s %s (%s) @ %s" % (self.first_name, self.last_name, \
+        return u"%s %s (%s) @ %s" % (self.first_name, self.last_name, \
             self.email, self.funnel_stage)
 
 def _stitch_pages(f):
