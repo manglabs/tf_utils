@@ -8,12 +8,9 @@
 # TODO Require name be filled in in CRM so we can personalize email.
 # TODO "signed up at" should be a date / time so we don't lose granularity we had at lead sign up time.
 # TODO create way for any contact to be allowed to receive newsletter (investors, long term hires, who else?)
+# TODO there's no "resubscribe:" anyone who resubscribes will be auto-unsubscribed when mismatched_unsubscribed() is run
+#      The only way to do this is to have Zoho be the canonical data source: replace the unsubscribe URL w/ an API call to Zoho.
 #
-# TODO update leads to have signup date filled in - DONE
-# TODO migrate missing leads to CIO, for example cabzees89@gmail.com - DONE
-# TODO update potentials missing signed up at - **Ani's on it.**
-# TODO repeat migration of potentials to cio (--send_potentials_to_cio)
-# TODO find any CIO user missing contact_type property and fix
 #####################
 
 import os, pdb
