@@ -281,11 +281,53 @@ class ThinkfulPerson(object):
         tp.email = g('Email')
         tp.contact_type = "Student"
         tp.zoho_lead_id = g('LEADID')
-        # TODO set to signup_date once they're all backfilled
+        tp.email_opt_out = g('Email Opt Out') == 'true'
         tp.created_date = tp._parse_date(g('Created Time'))
         tp.signup_date = tp._parse_date(g('Signed up at'))
         tp.funnel_stage = g('Lead Status')
         return tp
+
+    @staticmethod
+    def from_cio(r):
+        # sample = {u'attributes': {u'_delivered_email:11314547': 1366991323, 
+        # u'_opened_email:10545898': 1366308241, u'id': u'ordinaryjoe80@gmail.com', 
+        # u'_segment:9334:cache': 0, u'_last_emailed': 1367425173, 
+        # u'_segment:8885': 1364312770, u'unsubscribed': True, 
+        # u'_delivered_email:9495073': 1365003876, u'email': u'ordinaryjoe80@gmail.com', 
+        # u'_segment:11802': 1367375408, u'funnel_stage': u'Expressed interest', 
+        # u'_opened_email:8857892': 1364332246, u'_first_seen': 1364312770, 
+        # u'_opened_email:9917495': 1365629371, u'_segment:9308': 1364875200, 
+        # u'_opened_email:11314547': 1366991404, u'_delivered_email:10545898': 1366303665, 
+        # u'contact_type': u'Student', u'created_at': 1364270400, u'_segment:12366': 1367932534, 
+        # u'_delivered_email:8857892': 1364327346, u'_delivered_email:11635216': 1367425173, 
+        # u'_opened_email:11635216': 1367426066, u'_opened_email:9495073': 1365005012, 
+        # u'_delivered_email:9917495': 1365617210}, 
+        # u'segments': {u'funnel_stage - On fence / Wants to think it over': None, 
+        #   u'contact_type - Student': 1367375408, 
+        #   u'Unsubscribed': 1367932534, 
+        #   u'At least a week old': 1364875200, 
+        #   u'Mentors': None, u'funnel_stage - Call confirmed': None, 
+        #   u'funnel_stage - Expressed interest': 1364312770, 
+        #   u'funnel_stage - Verbal close': None, 
+        #   u'funnel_stage - Signed up': None, u'Missing funnel_stage': None, 
+        #   u'Email bounce': None, u'Thinks': None, u'Missing contact_type': None}, 
+        # u'id': u'ordinaryjoe80@gmail.com'}
+        def g(k):
+            v = r[k]
+            if not v or not v.strip() or v.strip() == 'null':
+                return None
+            return v.strip()
+        tp = ThinkfulPerson()
+        tp.first_name = None
+        tp.last_name = None
+        tp.email = r['attributes']['email']
+        tp.funnel_stage = r['attributes']['funnel_stage']
+        tp.is_lead = tp.funnel_stage == "Signed up"
+        tp.is_potential = not tp.is_lead
+        tp.contact_type = r['attributes']['contact_type']
+        tp.email_opt_out = r['attributes']['unsubscribed']
+        return tp
+
 
     def add_as_raw_lead(self, crm):
         assert self.is_lead
@@ -391,13 +433,20 @@ class ThinkfulPerson(object):
         else:
             raise Exception("Unknown person type! Neither lead nor potential?")
 
+    def __eq__(self, o):
+        # print self.email, o.email, self.email == o.email
+        return self.email == o.email
+    def __hash__(self):
+        return hash(self.email)
+
     def __str__(self):
         return self.__unicode__().encode('utf-8', 'ignore')
     def __unicode__(self):
         return u"%s %s (%s) @ %s" % (self.first_name, self.last_name, \
             self.email, self.funnel_stage)
+    __repr__ = __str__
 
-def _stitch_pages(f):
+def _stitch_pages(f, *fargs, **fkwargs):
     """Zoho limits the number of records per request to 200. 
     We use this to combine all results behind the scenes into a 
     single result set.
@@ -408,10 +457,10 @@ def _stitch_pages(f):
     from_index=1
     to_index=200
     while True:
-        print "Getting page from index %s to %s" % (from_index, to_index)
-        one_page = f(from_index=from_index, to_index=to_index)
+        print "Calling func %s for page index %s to %s" % (f.func_name, from_index, to_index)
+        one_page = f(from_index=from_index, to_index=to_index, *fargs, **fkwargs)
         records.extend(one_page)
-        if len(one_page) == 0:
+        if len(one_page) == 0 or len(one_page) < 200:
             break
         from_index = to_index
         to_index += 200
