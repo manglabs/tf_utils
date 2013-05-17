@@ -30,7 +30,9 @@ def get_all_potential_contacts(crm, all_contacts):
         # pdb.set_trace()# beware api quotas
         for potential in _stitch_pages(crm.get_potentials):
             for contact in crm.get_contacts_for_potential(potential['POTENTIALID']):
-                ptfp = ThinkfulPerson.from_zoho_potential(contact)
+                # Oy. Why is this called from_zoho_potential not from_zoho_contact
+                # ptfp = ThinkfulPerson.from_zoho_potential(contact)
+                ptfp = ThinkfulPerson.from_zoho_contact(contact)
                 serial.write('%s,%s,%s\n' % (ptfp.email, ptfp.zoho_contact_id, potential['POTENTIALID']))
                 serial.flush()
                 tfp = all_contacts[ptfp.zoho_contact_id]
@@ -228,8 +230,7 @@ def main():
     parser.add_option("--use_api_allowance", action="store_true"
         , help="use valuable API allowances instead of cached copy. Beware api limits in Zoho!")
     (options, args) = parser.parse_args()
-
-    (options, args) = parser.parse_args()
+    
     # note Zoho requires your password... Did these as env vars so at least 
     # they wouldn't be recorded in your .bash_history
     crm = get_crm()

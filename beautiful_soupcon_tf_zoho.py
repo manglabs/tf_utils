@@ -236,11 +236,18 @@ class ThinkfulPerson(object):
 
         tp = ThinkfulPerson()
         tp.zoho_contact_id = g('CONTACTID')
-        tp.email = g('Email')
+        tp.zoho_potential_id = g('POTENTIALID')
+        tp.email = g('CONTACTID')# TODO
+
         # this is dumb. I should be able to query for it.
         tp.first_name, tp.last_name = tp._parse_name(g('Contact Name'))
-        tp.phone = g('Phone')
-        tp.funnel_stage = None
+        tp.signup_date = tp._parse_date(g('Signed up at'))
+        tp.closing_date = tp._parse_date(g('Closing Date'))
+        tp.lead_source = g('Lead Source')
+        tp.exact_lead_source = g('Exact lead source')
+        tp.funnel_stage = g('Stage')
+        # tp.contact_type = "Student"
+        # tp.phone = g('Phone')
 
         return tp
 
@@ -328,6 +335,9 @@ class ThinkfulPerson(object):
         tp.email_opt_out = r['attributes']['unsubscribed']
         return tp
 
+    def pull_funnel_history(self, crm):
+        stages = crm.get_funnel_stages_for_potential(self.zoho_potential_id)
+        self.funnel_history = FunnelStage.from_zoho_potential(stages)
 
     def add_as_raw_lead(self, crm):
         assert self.is_lead
@@ -445,6 +455,26 @@ class ThinkfulPerson(object):
         return u"%s %s (%s) @ %s" % (self.first_name, self.last_name, \
             self.email, self.funnel_stage)
     __repr__ = __str__
+
+class FunnelStage(object):
+    """A single funnel stage for a single potential"""
+
+    @staticmethod
+    def from_zoho_potential(stages):
+        fss = []
+        for r in stages:
+            fs = FunnelStage()
+            fs.stage = r['Stage']
+            fs.date = r['Last Modified Time'].split(' ')[0]# TODO
+            fss.append(fs)
+        return fss
+
+    def __str__(self):
+        return self.__unicode__().encode('utf-8', 'ignore')
+    def __unicode__(self):
+        return u"%s on %s" % (self.stage, self.date)
+    __repr__ = __str__
+
 
 def _stitch_pages(f, *fargs, **fkwargs):
     """Zoho limits the number of records per request to 200. 
