@@ -25,6 +25,8 @@ from datetime import datetime
 class ThinkfulPerson(object):
 
     def _parse_name(self, name):
+        if not name:
+            return (None, None)
         first_name = name.split(" ")[0]
         if not first_name:
             first_name = None
