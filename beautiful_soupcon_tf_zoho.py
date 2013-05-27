@@ -272,6 +272,7 @@ class ThinkfulPerson(object):
         # tp.signup_date = tp._parse_date(g('Signed up at') or g('Created Time').split(' ')[0])
         tp.signup_date = tp._parse_date(g('Signed up at'))
         tp.funnel_stage = None
+        tp.stripe_customer_id = g('Stripe Customer ID')
         return tp
 
     @staticmethod

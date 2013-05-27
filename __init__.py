@@ -34,3 +34,11 @@ def get_crm():
 def get_cio():
     """Connection to customer.io"""
     return CustomerIOAwesome(env("CIO_SITE_ID"), env("CIO_API_KEY"))
+
+def get_stripe():
+    """Setup connection to stripe. 
+    It's annoying there's no object... that it's just the lib
+    """
+    import stripe
+    stripe.api_key = env('STRIPE_SECRET_KEY')
+    return stripe
