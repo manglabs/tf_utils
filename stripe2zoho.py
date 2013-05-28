@@ -11,24 +11,6 @@ from tf_utils import get_crm, get_stripe
 from beautiful_soupcon_tf_zoho import ThinkfulPerson, _stitch_pages
 from optparse import OptionParser
 
-
-
-# class SyncStatus(object):
-#     def __init__(self, in_stripe, in_zoho, out_of_sync, description):
-#         self.in_stripe = in_stripe
-#         self.in_zoho = in_zoho
-#         self.out_of_sync = out_of_sync
-#         self.description = description
-
-#     def __str__(self):
-#         if self.out_of_sync:
-#             prefix = "OUT OF SYNC"
-#         else:
-#             prefix = "OK"
-#         return "%s: zoho:%s & stripe:%s %s" % \
-#             (prefix, self.in_zoho, self.in_stripe, self.description)
-#     __repr__ = __str__
-
 def stitch_pages_stripe(f, *args, **kwargs):
     records = dict(data=[], object=list, url=None, count=None)
     offset = 0
@@ -47,17 +29,19 @@ def stitch_pages_stripe(f, *args, **kwargs):
     return records
 
 def send_stripe_ids_to_zoho_contacts(zoho, stripe):
-    # TODO this should be in javascript
     """
     all stripe customers are contacts in Zoho
     all zoho CC on file & students are in stripe
     Zoho contacts have stripe IDs
     """
-    print "Getting Customers in Stripe..."
+    # TODO this should be in javascript
+
+    print "Getting Customers from Stripe..."
     customers = []
     for customer in stitch_pages_stripe(stripe.Customer.all)['data']:
         customers.append(customer)
 
+    print "Getting contacts from Zoho..."
     contacts = {}
     if zoho.use_api_allowance:
         for contact in _stitch_pages(zoho.search_contacts, "(Contact Type|=|Student)"):
