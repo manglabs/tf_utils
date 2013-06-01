@@ -338,10 +338,6 @@ class ThinkfulPerson(object):
         tp.email_opt_out = r['attributes']['unsubscribed']
         return tp
 
-    def pull_funnel_history(self, crm):
-        stages = crm.get_funnel_stages_for_potential(self.zoho_potential_id)
-        self.funnel_history = FunnelStage.from_zoho_potential(stages)
-
     def add_as_raw_lead(self, crm):
         assert self.is_lead
         print "Adding lead: %s" % self
