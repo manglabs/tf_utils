@@ -43,10 +43,13 @@ def send_stripe_ids_to_zoho_contacts(zoho, stripe):
 
     print "Getting contacts from Zoho..."
     contacts = {}
+    contacts_by_stripe_id = {}
     if zoho.use_api_allowance:
         for contact in _stitch_pages(zoho.search_contacts, "(Contact Type|=|Student)"):
             tfp = ThinkfulPerson.from_zoho_contact(contact)
             contacts[tfp.email.lower()] = tfp
+            if tfp.stripe_customer_id:
+                contacts_by_stripe_id[tfp.stripe_customer_id] = tfp
         contacts_fh = open('contacts.pickle', 'w')
         pickle.dump(contacts, contacts_fh)
         contacts_fh.close()
@@ -56,12 +59,16 @@ def send_stripe_ids_to_zoho_contacts(zoho, stripe):
         contacts_fh.close()
 
     for customer in customers:
-        if not contacts.has_key(customer.email):
-            print "ERROR: No customer with email %s found in Zoho! Maps to Stripe Customer ID '%s'" \
-                % (customer.email, customer.id)
+        if not contacts.has_key(customer.email.lower()):
+            if contacts_by_stripe_id.has_key(customer.id):
+                print "For %s: Mapped to Stripe customer ID '%s' even though in Stripe the email address is '%s'. Assuming this is on purpose." \
+                    % (contacts_by_stripe_id[customer.id], customer.id, customer.email)
+            else:
+                print "ERROR: Email %s in Stripe not in Zoho! Stripe Customer ID is '%s'" \
+                    % (customer.email.lower(), customer.id)
             continue
 
-        contact = contacts[customer.email]
+        contact = contacts[customer.email.lower()]
         if contact.stripe_customer_id == None:
             print "For %s: Adding Stripe Customer ID '%s'" \
                 % (contact, customer.id)
