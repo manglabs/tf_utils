@@ -276,6 +276,36 @@ class ThinkfulPerson(object):
         return tp
 
     @staticmethod
+    def from_zoho_potential_contact(r):
+        # as in, the contact info you get when you query for the RelatedRecord
+        # of a potential's contacts.
+        # {u'Contact Name': u'Michael Murphy', u'CONTACTID': u'783072000000534447', u'Email': u'mike.p.murphy@comcast.net', u'Phone': u'null'}
+        def g(k):
+            v = r[k]
+            if not v or not v.strip() or v.strip() == 'null':
+                return None
+            return v.strip()
+
+        tp = ThinkfulPerson()
+        tp.zoho_contact_id = g('CONTACTID')
+        tp.email = g('Email')
+        parts = g('Contact Name').split(' ')
+        if len(parts) >= 2:
+            tp.first_name = parts[0]
+            tp.last_name = parts[1:]
+        else:
+            tp.first_name = None
+            tp.last_name = g('Contact Name')
+        tp.contact_type = None
+        # tp.signup_date = tp._parse_date(g('Signed up at') or g('Created Time').split(' ')[0])
+        tp.signup_date = None
+        tp.funnel_stage = None
+        tp.stripe_customer_id = None
+        return tp
+
+
+
+    @staticmethod
     def from_zoho_lead(r):
         # {u'Last Name': u'sapp.development@gmail.com', u'First Name': u'null', 
         # u'Created Time': u'2013-03-21 23:34:58', u'Email': u'sapp.development@gmail.com', 
