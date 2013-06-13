@@ -376,6 +376,7 @@ class ThinkfulPerson(object):
             "Last Name" : self.email,
             "Lead Status" : "Signed up",
             "Lead Source" : self.lead_source,
+            "Exact lead source" : self.exact_lead_source,
             "Lead Owner" : self.contact_owner,
             "Signed up at" : self._dt2zoho(self.signup_date),
         }
