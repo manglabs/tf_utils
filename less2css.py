@@ -7,8 +7,8 @@ Compile our app's less files into CSS. Very strictly only does:
 
 
 import pdb
+import subprocess
 from os.path import join, exists
-from os import execlp
 from optparse import OptionParser
 import webstart
 
@@ -17,10 +17,10 @@ def _less2css(less_fn, css_fn, include_path=None):
     print "Compiling '%s' to '%s'" % (less_fn, css_fn)
     # note stupid "0" b/c execlp doesn't pass args[0] to lessc. 
     # TODO use a different exec* or shutil or somesuch other subprocessing mechanism...
-    args = ["0", "-x", less_fn, css_fn]
+    args = ["lessc", "-x", less_fn, css_fn]
     if include_path:
         args.insert(1, "--include-path=%s" % include_path)
-    execlp("lessc", *args)
+    subprocess.call(args)
 
 def _get_less_files(root_dir, include_path=None):
     for app_name, app in webstart.app.blueprints.items():
