@@ -180,7 +180,6 @@ def _get_cio_segment(cio, segment_id):
             continue
         tfp = ThinkfulPerson.from_cio(customer)
         unsubscribed.add(tfp)
-    print "Found %s unsubscribed customers." % len(unsubscribed)
     return unsubscribed
 
 def _update_zoho_unsubscriber(crm, tfp):
@@ -207,6 +206,7 @@ def mismatched_unsubscribed(crm, cio):
     # This is the segment containing all "Customers" who've unsubscribed
     # https://manage.customer.io/segments/12366/edit
     unsub_cio = _get_cio_segment(cio, 12366)
+    print "Found %s unsubscribed customers." % len(unsubscribed)
 
     # pdb.set_trace()
 
@@ -222,11 +222,26 @@ def mismatched_unsubscribed(crm, cio):
         print "  In CIO not in Zoho:",  tfp
         _update_zoho_unsubscriber(crm, tfp)
 
+def clean_out_test_emails_from_cio(cio):
+    """remove our own emails from marketing so we don't receive all the 
+    drip marketing and mess up the analytics.
+    """
+    test_emails = _get_cio_segment(cio, 16259)
+    for tfp in test_emails:
+        if tfp.funnel_stage == 'Signed up':
+            funnel_stage = "N/A: Was test."
+            print "Setting %s in customer.io to funnel stage '%s'" % (tfp, funnel_stage)
+            cio.identify(id=tfp.email,
+                funnel_stage=funnel_stage)
+        else:
+            print "Not changing lead %s in customer.io" % (tfp)
+
 def main():
     parser = OptionParser("%prog --rpt_bad_data | --update_cio | --mismatched_unsubscribed")
     parser.add_option("--rpt_bad_data", action="store_true"
         , help="Report bad data in CRM (this is read-only)")
     parser.add_option("--mismatched_unsubscribed", action="store_true")
+    parser.add_option("--clean_out_test_emails_from_cio", action="store_true")
     parser.add_option("--update_cio", action="store_true"
         , help="Send all 'potentials' and 'leads' from Zoho to customer.io")
     parser.add_option("--use_api_allowance", action="store_true"
@@ -246,6 +261,8 @@ def main():
         # mismatched_signup_date_potentials_contacts(crm)
         # missing_signup_date_leads(crm)
         pass
+    if options.clean_out_test_emails_from_cio:
+        clean_out_test_emails_from_cio(cio)
     if options.mismatched_unsubscribed:
         mismatched_unsubscribed(crm, cio)
     if options.update_cio:
