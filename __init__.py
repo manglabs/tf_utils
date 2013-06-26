@@ -31,6 +31,20 @@ def get_crm():
     return CRM(username=env("ZOHO_USERNAME"), password=env("ZOHO_PASSWORD"), 
         authtoken=env("ZOHO_AUTHTOKEN"), scope="crmapi")
 
+class crm_connection():
+    """
+    Usage:
+    with crm_connection as crm():
+        do_things()
+    """
+    def __enter__(self):
+        self.crm = get_crm()
+        self.crm.open()
+        return self.crm
+
+    def __exit__(self, type, value, traceback):
+        self.crm.close()
+
 def get_cio():
     """Connection to customer.io"""
     return CustomerIOAwesome(env("CIO_SITE_ID"), env("CIO_API_KEY"))
