@@ -248,6 +248,9 @@ class ThinkfulPerson(object):
         tp.lead_source = g('Lead Source')
         tp.exact_lead_source = g('Exact lead source')
         tp.funnel_stage = g('Stage')
+        tp.payer_contact_id = None
+        if g('Payer') is not None:
+            tp.payer_contact_id = g('Payer_ID')
         # tp.contact_type = "Student"
         # tp.phone = g('Phone')
 
