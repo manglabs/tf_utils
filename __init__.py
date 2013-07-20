@@ -20,6 +20,15 @@ class CustomerIOAwesome(CustomerIO):
         self.host = self._orig_host
         return json.loads(response)
 
+    def get_customer(self, customer_id):
+        # https://manage.customer.io/api/v1/customers/0.63214180967@thinkful.com
+        self._orig_host = self.host
+        self.host = "manage.customer.io"
+        query_string = "%s/customers/%s" % (self.url_prefix, customer_id)
+        response = self.send_request("GET", query_string, {})
+        self.host = self._orig_host
+        return json.loads(response)
+
 def env(name, default=None, required=True):
     value = os.environ.get(name, default)
     if required and not value:
