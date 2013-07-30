@@ -366,8 +366,6 @@ class ThinkfulPerson(object):
         tp.last_name = None
         tp.email = r['attributes']['email']
         tp.funnel_stage = r['attributes'].get('funnel_stage', None)
-        tp.is_lead = tp.funnel_stage == "Signed up"
-        tp.is_potential = not tp.is_lead
         tp.contact_type = r['attributes'].get('contact_type', None)
         tp.email_opt_out = r['segments']['Unsubscribed']
         return tp
