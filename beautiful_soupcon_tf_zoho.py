@@ -366,8 +366,6 @@ class ThinkfulPerson(object):
         tp.last_name = None
         tp.email = r['attributes']['email']
         tp.funnel_stage = r['attributes'].get('funnel_stage', None)
-        tp.is_lead = tp.funnel_stage == "Signed up"
-        tp.is_potential = not tp.is_lead
         tp.contact_type = r['attributes'].get('contact_type', None)
         tp.email_opt_out = r['segments']['Unsubscribed']
         return tp
@@ -476,6 +474,24 @@ class ThinkfulPerson(object):
             self.update_contact(crm)
         else:
             raise Exception("Unknown person type! Neither lead nor potential?")
+
+    def __getitem__(self, k):
+        # lets us treat this obj ~ like the original json
+        fields = {
+            'CONTACTID': 'zoho_contact_id',
+            'POTENTIALID': 'zoho_potential_id',
+            'CONTACTID': 'email',
+            'First Name': 'first_name',
+            'Last Name': 'last_name',
+            'Signed up at': 'signup_date',
+            'Closing Date': 'closing_date',
+            'Lead Source': 'lead_source',
+            'Exact lead source': 'exact_lead_source',
+            'Stage': 'funnel_stage',
+            'Course': 'course',
+            'Payer_ID': 'payer_contact_id',
+        }
+        return getattr(self, fields[k])
 
     def __eq__(self, o):
         # print self.email, o.email, self.email == o.email

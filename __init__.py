@@ -9,6 +9,23 @@ class CustomerIOAwesome(CustomerIO):
     # TODO want to fork their lib, but it doesn't deploy to heroku for 
     # some reason, so punting.
 
+    def _stitch_pages(self, f, *fargs, **fkwargs):
+        """CustomerIO limits the number of records per request to 100. 
+        We use this to combine all results behind the scenes into a 
+        single result set.
+        """
+        records = {'customers':[]}
+        page=1
+        per_page=100
+        while True:
+            print "Calling func %s for page %s per_page %s" % (f.func_name, page, per_page)
+            one_page = f(*fargs, page=page, per_page=per_page, **fkwargs)
+            records['customers'].extend(one_page['customers'])
+            if len(one_page) == 0 or len(one_page['customers']) < per_page:
+                break
+            page += 1
+        return records
+
     def get_segment(self, segment_ids, page=1, per_page=100):
         # TODO hack the mapping of segment name -> ID
         # https://manage.customer.io/api/v1/customers?page=1&per=10&segments=[[12366]]

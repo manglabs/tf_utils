@@ -13,7 +13,7 @@
 #
 #####################
 
-import os, pdb
+import os, pickle, pdb
 from datetime import datetime
 from optparse import OptionParser
 
@@ -21,6 +21,8 @@ from mfabrik.zoho.crm import CRM
 from beautiful_soupcon_tf_zoho import (ThinkfulPerson, 
     get_zoho_contacts, _stitch_pages)
 from tf_utils import get_cio, get_crm
+from queue import conn
+from tf_utils.fixtures import fixtureable
 
 def get_all_potential_contacts(crm, all_contacts):
     tf_people = []
@@ -62,19 +64,67 @@ def _dt2unix(string_date):
     dt = datetime(year=y, month=m, day=d)
     return dt.strftime('%s')
 
-def send_potentials_to_customerio(crm, cio):
-    all_contacts = get_zoho_contacts(crm)
-    contacts = get_all_potential_contacts(crm, all_contacts)
+def _get_cio_customer(cio, customer_id):
+    try:
+        return cio.get_customer(customer_id)
+    except Exception, e:
+        return None
+
+def send_contact_to_customerio(cio, contact, extra_cio_args=None):
+    def valid_name(d, k):
+        return d[k] and not '@' in d[k] and not 'null' in d[k]
+
+    email = contact['Email'].strip()
+
+    cio_args = dict(id=email, email=email, 
+        contact_type=contact['Contact Type'])
+
+    tfp = ThinkfulPerson()
+    if valid_name(contact, 'Signed up at'):
+        created_at = int((tfp._parse_date(contact['Signed up at']) - datetime.utcfromtimestamp(0)).total_seconds())
+        cio_args['created_at'] = created_at
+    if valid_name(contact, 'First Name'):
+        cio_args['first_name'] = contact['First Name']
+    if valid_name(contact, 'Last Name'):
+        cio_args['last_name'] = contact['Last Name']
+    
+    if not extra_cio_args == None:
+        # override above w/ what was sent in
+        cio_args.update(extra_cio_args)
+
+    cio.identify(**cio_args)
+
+def send_potential_to_customerio(cio, pot, contact):
+    def valid_name(d, k):
+        return d[k] and not '@' in d[k] and not 'null' in d[k]
+
+    extra_cio_args = dict()
+    cio_customer = _get_cio_customer(cio, contact['Email'])
+    if cio_customer and cio_customer['customer']['attributes'].has_key('created_at'):
+        print "Updating potential %s in customer.io" % pot['POTENTIALID']
+        extra_cio_args['created_at'] = cio_customer['customer']['attributes']['created_at']
+    else:
+        print "No created date for potential %s. Sending as blank" % pot
+    
+    if valid_name(pot, 'Course'):
+        extra_cio_args['course'] = pot['Course']
+
+    send_contact_to_customerio(cio, contact, extra_cio_args=extra_cio_args)
+
+def send_potentials_to_customerio(cio):
+    pots_by_contact = {}
+    for pot in _get_from_cache('tim_potentials'):
+        pots_by_contact[pot.zoho_contact_id] = pot
+    contacts = _get_from_cache('tim_contacts')
     for c in contacts:
-        # print "Sending potential %s to customer.io" % c
-        # pdb.set_trace()
+        if not pots_by_contact.has_key(c['CONTACTID']):
+            continue
+        pot = pots_by_contact[c['CONTACTID']]
         try:
-            cio.identify(id=c.email, email=c.email, 
-                created_at=c.signup_date.strftime('%s'),
-                funnel_stage=c.funnel_stage, 
-                contact_type=c.contact_type)
-        except AttributeError, ae:
-            print "Could not send %s to customer.io! %s" % (c, ae)
+            send_potential_to_customerio(cio, pot, c)
+        except Exception, e:
+            print "Could not send %s to customer.io! %s" % (c, e)
+            # pdb.set_trace()
 
 def send_leads_to_customerio(crm, cio):
     for lead in _stitch_pages(crm.get_leads):
@@ -171,7 +221,7 @@ def _get_zoho_set(crm, search_condition):
 def _get_cio_segment(cio, segment_id):
     print "Getting all customers from CustomerIO segment %s..." % segment_id
     unsubscribed = set()
-    segment_json = cio.get_segment([segment_id])
+    segment_json = cio._stitch_pages(cio.get_segment, [segment_id])
 
     for customer in segment_json['customers']:
         # print customer
@@ -182,31 +232,45 @@ def _get_cio_segment(cio, segment_id):
         unsubscribed.add(tfp)
     return unsubscribed
 
-def _update_zoho_unsubscriber(crm, tfp):
-    if tfp.is_lead:
-        search_f, update_f, key = crm.search_leads, crm.update_leads, "LEADID"
-    else:
-        search_f, update_f, key = crm.search_contacts, crm.update_contacts, "CONTACTID"
+def _get_from_cache(cache_key):
+    pickled = fixtureable('redis', conn.get)(cache_key)
+    cached = pickle.loads(pickled)
+    return cached
 
-    members = search_f("(Email|=|%s)" % tfp.email)
-    if not members:
-        raise Exception(
-            "***ERROR*** Could not find %s using %s! Maybe CIO has old data?" % (tfp, search_f))
-    if len(members) > 1:
-        raise Exception(
-            "***ERROR*** More than one person found for %s using %s!" % (tfp, search_f))
+def _get_cached_person(cache_key, person_key, person_value):
+    for row in _get_from_cache(cache_key):
+        if row.has_key(person_key) and row[person_key] == person_value:
+            return row
+    return None
+
+def _update_zoho_unsubscriber(crm, tfp):
+    tfp_as_lead = _get_cached_person('tim_leads', 'Email', tfp.email)
+    if tfp_as_lead:
+        update_f, key = crm.update_leads, tfp_as_lead['LEADID']
+    else:
+        tfp_as_contact = _get_cached_person('tim_contacts', 'Email', tfp.email)
+        if tfp_as_contact:
+            update_f, key = crm.update_contacts, tfp_as_contact['CONTACTID']
+        else:
+            raise Exception("***ERROR*** Cannot find %s in cache." % tfp)
+
+    if not key or key.strip() == "":
+        raise Exception("***ERROR*** Invaid key for %s" % tfp)
+
     update_f([{
-        "Id" : members[0][key],
+        "Id" : key,
         "Email Opt Out": "true",
     }])
     return True
 
 def mismatched_unsubscribed(crm, cio):
     unsub_zoho = _get_zoho_set(crm, "(Email Opt Out|=|true)")
+    # unsub_zoho = set()# avoid hitting api quota
+    print "Currently %s unsubscribed contacts in Zoho" % len(unsub_zoho)
     # This is the segment containing all "Customers" who've unsubscribed
     # https://manage.customer.io/segments/12366/edit
     unsub_cio = _get_cio_segment(cio, 12366)
-    print "Found %s unsubscribed customers." % len(unsubscribed)
+    print "Currently %s unsubscribed customers in CIO." % len(unsub_cio)
 
     # pdb.set_trace()
 
@@ -220,19 +284,25 @@ def mismatched_unsubscribed(crm, cio):
     print "Found %s email(s) in CustomerIO not in Zoho." % len(unsub_cio - unsub_zoho)
     for tfp in unsub_cio - unsub_zoho:
         print "  In CIO not in Zoho:",  tfp
-        _update_zoho_unsubscriber(crm, tfp)
+        try:
+            _update_zoho_unsubscriber(crm, tfp)
+        except Exception, e:
+            print e
 
 def clean_out_test_emails_from_cio(cio):
     """remove our own emails from marketing so we don't receive all the 
     drip marketing and mess up the analytics.
     """
     test_emails = _get_cio_segment(cio, 16259)
+    funnel_stage = "N/A: Was test."
     for tfp in test_emails:
-        if tfp.funnel_stage == 'Signed up':
-            funnel_stage = "N/A: Was test."
-            print "Setting %s in customer.io to funnel stage '%s'" % (tfp, funnel_stage)
+        if (tfp.funnel_stage in ['Signed up', funnel_stage]) \
+            and ('+' in tfp.email or '-' in tfp.email):
+            contact_type = funnel_stage
+            print "Setting %s in customer.io to funnel_stage & contact_type '%s'" % (tfp, funnel_stage)
             cio.identify(id=tfp.email,
-                funnel_stage=funnel_stage)
+                funnel_stage=funnel_stage,
+                contact_type=contact_type)
         else:
             print "Not changing lead %s in customer.io" % (tfp)
 
@@ -266,8 +336,9 @@ def main():
     if options.mismatched_unsubscribed:
         mismatched_unsubscribed(crm, cio)
     if options.update_cio:
-        send_potentials_to_customerio(crm, cio)
-        send_leads_to_customerio(crm, cio)
+        send_potentials_to_customerio(cio)
+        # we no longer use leads for potential students, so commented this out.
+        # send_leads_to_customerio(crm, cio)
 
 if __name__ == '__main__':
     main()
