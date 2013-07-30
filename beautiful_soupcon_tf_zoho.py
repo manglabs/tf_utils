@@ -475,6 +475,24 @@ class ThinkfulPerson(object):
         else:
             raise Exception("Unknown person type! Neither lead nor potential?")
 
+    def __getitem__(self, k):
+        # lets us treat this obj ~ like the original json
+        fields = {
+            'CONTACTID': 'zoho_contact_id',
+            'POTENTIALID': 'zoho_potential_id',
+            'CONTACTID': 'email',
+            'First Name': 'first_name',
+            'Last Name': 'last_name',
+            'Signed up at': 'signup_date',
+            'Closing Date': 'closing_date',
+            'Lead Source': 'lead_source',
+            'Exact lead source': 'exact_lead_source',
+            'Stage': 'funnel_stage',
+            'Course': 'course',
+            'Payer_ID': 'payer_contact_id',
+        }
+        return getattr(self, fields[k])
+
     def __eq__(self, o):
         # print self.email, o.email, self.email == o.email
         return self.email == o.email
