@@ -511,15 +511,15 @@ class FunnelStage(object):
 
 
 def _stitch_pages(f, *fargs, **fkwargs):
-    """Zoho limits the number of records per request to 200. 
-    We use this to combine all results behind the scenes into a 
+    """Zoho limits the number of records per request to 200.
+    We use this to combine all results behind the scenes into a
     single result set.
 
     Note this can hose your API quota if you have a lot of entries.
     """
     records = []
-    from_index=1
-    to_index=200
+    from_index = 1
+    to_index = 200
     while True:
         print "Calling func %s for page index %s to %s" % (f.func_name, from_index, to_index)
         one_page = f(from_index=from_index, to_index=to_index, *fargs, **fkwargs)
@@ -530,12 +530,34 @@ def _stitch_pages(f, *fargs, **fkwargs):
         to_index += 200
     return records
 
+
 def get_zoho_contacts(crm):
     """Returns ALL contacts in the CRM. Note multiple API calls."""
     print "Getting all contacts..."
     tf_people = {}
-    for c in _stitch_pages(crm.get_contacts):
+    for c in _stitch_pages(crm.get_contacts, select_columns='contacts(First Name,Last Name,Email,Contact Type,Email Opt Out,Signed up at,Created Time,Stripe Customer ID, Thinkful Login)'):
         tfp = ThinkfulPerson.from_zoho_contact(c)
         tf_people[tfp.zoho_contact_id] = tfp
     return tf_people
 
+
+def get_zoho_potentials(crm):
+    """Returns ALL potentials in the CRM. Note multiple API calls."""
+    print "Getting all contacts..."
+    tf_people = {}
+    for c in _stitch_pages(crm.get_potentials, select_columns='potentials(Contact Name,Signed up at,Closing Date,Stage,Lead Source,Exact lead source,Course)'):
+        tfp = ThinkfulPerson.from_zoho_contact(c)
+        tf_people[tfp.zoho_contact_id] = tfp
+    return tf_people
+
+
+def get_zoho_contacts_raw(crm):
+    """Returns ALL contacts in the CRM. Note multiple API calls."""
+    print "Getting all contacts..."
+    return _stitch_pages(crm.get_contacts, select_columns='contacts(First Name,Last Name,Email,Contact Type,Email Opt Out,Signed up at,Created Time,Stripe Customer ID,Thinkful Login,Contact Name)')
+
+
+def get_zoho_potentials_raw(crm):
+    """Returns ALL potentials in the CRM. Note multiple API calls."""
+    print "Getting all potentials..."
+    return _stitch_pages(crm.get_potentials, select_columns='potentials(Contact Name,Signed up at,Closing Date,Stage,Lead Source,Exact lead source,Course,RelCntId)')
