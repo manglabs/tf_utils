@@ -70,51 +70,61 @@ def _get_cio_customer(cio, customer_id):
     except Exception, e:
         return None
 
-def send_potentials_to_customerio(crm, cio):
+def send_contact_to_customerio(cio, contact, extra_cio_args=None):
+    def valid_name(d, k):
+        return d[k] and not '@' in d[k] and not 'null' in d[k]
+
+    email = contact['Email'].strip()
+
+    cio_args = dict(id=email, email=email, 
+        contact_type=contact['Contact Type'])
+
+    tfp = ThinkfulPerson()
+    if valid_name(contact, 'Signed up at'):
+        created_at = int((tfp._parse_date(contact['Signed up at']) - datetime.utcfromtimestamp(0)).total_seconds())
+        cio_args['created_at'] = created_at
+    if valid_name(contact, 'First Name'):
+        cio_args['first_name'] = contact['First Name']
+    if valid_name(contact, 'Last Name'):
+        cio_args['last_name'] = contact['Last Name']
+    
+    if not extra_cio_args == None:
+        # override above w/ what was sent in
+        cio_args.update(extra_cio_args)
+
+    cio.identify(**cio_args)
+
+def send_potential_to_customerio(cio, pot, contact):
+    def valid_name(d, k):
+        return d[k] and not '@' in d[k] and not 'null' in d[k]
+
+    extra_cio_args = dict()
+    cio_customer = _get_cio_customer(cio, contact['Email'])
+    if cio_customer and cio_customer['customer']['attributes'].has_key('created_at'):
+        print "Updating potential %s in customer.io" % pot['POTENTIALID']
+        extra_cio_args['created_at'] = cio_customer['customer']['attributes']['created_at']
+    else:
+        print "No created date for potential %s. Sending as blank" % pot
+    
+    if valid_name(pot, 'Course'):
+        extra_cio_args['course'] = pot['Course']
+
+    send_contact_to_customerio(cio, contact, extra_cio_args=extra_cio_args)
+
+def send_potentials_to_customerio(cio):
     pots_by_contact = {}
     for pot in _get_from_cache('tim_potentials'):
         pots_by_contact[pot.zoho_contact_id] = pot
     contacts = _get_from_cache('tim_contacts')
-    completed = True
     for c in contacts:
         if not pots_by_contact.has_key(c['CONTACTID']):
             continue
-        # print c
-        if c['CONTACTID'] == '783072000000183053':
-            completed = False
-        if completed:
-            continue
         pot = pots_by_contact[c['CONTACTID']]
-        cio_customer = _get_cio_customer(cio, c['Email'])
-        if cio_customer and cio_customer['customer']['attributes'].has_key('created_at'):
-            msg = "Updating potential %s in customer.io" % pot
-            created_at = cio_customer['customer']['attributes']['created_at']
-        elif c['Signed up at'] and not c['Signed up at'] == 'null':
-            msg = "Sending new potential %s to customer.io" % pot
-            created_at = int((pot._parse_date(c['Signed up at']) - datetime.utcfromtimestamp(0)).total_seconds())
-        else:
-            msg = "No created date for potential %s. Sending as blank" % pot
-            created_at = ''
-
-        course = pot.course
-        if not course:
-            course = ""
-        email = c['Email'].strip()
-        cio_args = dict(id=email, email=email, 
-            created_at=created_at,
-            course=course,
-            funnel_stage=pot.funnel_stage, 
-            contact_type=c['Contact Type'])
-        if pot.first_name and not '@' in pot.first_name:
-            cio_args['first_name'] = pot.first_name
-        if pot.last_name and not '@' in pot.last_name:
-            cio_args['last_name'] = pot.last_name
         try:
-            print msg
-            cio.identify(**cio_args)
+            send_potential_to_customerio(cio, pot, c)
         except Exception, e:
             print "Could not send %s to customer.io! %s" % (c, e)
-            pdb.set_trace()
+            # pdb.set_trace()
 
 def send_leads_to_customerio(crm, cio):
     for lead in _stitch_pages(crm.get_leads):
@@ -326,7 +336,7 @@ def main():
     if options.mismatched_unsubscribed:
         mismatched_unsubscribed(crm, cio)
     if options.update_cio:
-        send_potentials_to_customerio(crm, cio)
+        send_potentials_to_customerio(cio)
         # we no longer use leads for potential students, so commented this out.
         # send_leads_to_customerio(crm, cio)
 
