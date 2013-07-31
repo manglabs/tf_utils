@@ -493,6 +493,13 @@ class ThinkfulPerson(object):
         }
         return getattr(self, fields[k])
 
+    def has_key(self, k):
+        try:
+            self[k]
+            return True
+        except KeyError:
+            return False
+
     def __eq__(self, o):
         # print self.email, o.email, self.email == o.email
         return self.email == o.email
