@@ -72,12 +72,11 @@ def _get_cio_customer(cio, customer_id):
 
 def send_contact_to_customerio(cio, contact, extra_cio_args=None):
     def valid_name(d, k):
-        return d[k] and not '@' in d[k] and not 'null' in d[k]
+        return d.has_key(k) and d[k] and not '@' in d[k] and not 'null' in d[k]
 
     email = contact['Email'].strip()
 
     cio_args = dict(id=email, email=email, 
-        zoho_contact_id=contact['CONTACTID'],
         contact_type=contact['Contact Type'])
 
     tfp = ThinkfulPerson()
@@ -88,6 +87,8 @@ def send_contact_to_customerio(cio, contact, extra_cio_args=None):
         cio_args['first_name'] = contact['First Name']
     if valid_name(contact, 'Last Name'):
         cio_args['last_name'] = contact['Last Name']
+    if valid_name(contact, 'CONTACTID'):
+        cio_args['zoho_contact_id'] = contact['CONTACTID']
     
     if not extra_cio_args == None:
         # override above w/ what was sent in
