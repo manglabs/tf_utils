@@ -232,13 +232,16 @@ def _get_cio_segment(cio, segment_id):
         unsubscribed.add(tfp)
     return unsubscribed
 
-def _get_from_cache(cache_key):
-    pickled = fixtureable('redis', conn.get)(cache_key)
+def _get_from_cache(cache_key, _allow_fixture=True):
+    if _allow_fixture:
+        pickled = fixtureable('redis', conn.get)(cache_key)
+    else:
+        pickled = conn.get(cache_key)
     cached = pickle.loads(pickled)
     return cached
 
-def _get_cached_person(cache_key, person_key, person_value):
-    for row in _get_from_cache(cache_key):
+def _get_cached_person(cache_key, person_key, person_value, _allow_fixture=True):
+    for row in _get_from_cache(cache_key, _allow_fixture=_allow_fixture):
         if row.has_key(person_key) and row[person_key] == person_value:
             return row
     return None
