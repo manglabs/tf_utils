@@ -77,6 +77,7 @@ def send_contact_to_customerio(cio, contact, extra_cio_args=None):
     email = contact['Email'].strip()
 
     cio_args = dict(id=email, email=email, 
+        zoho_contact_id=contact['CONTACTID'],
         contact_type=contact['Contact Type'])
 
     tfp = ThinkfulPerson()
