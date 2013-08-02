@@ -103,10 +103,11 @@ def send_potential_to_customerio(cio, pot, contact):
     extra_cio_args = dict()
     cio_customer = _get_cio_customer(cio, contact['Email'])
     if cio_customer and cio_customer['customer']['attributes'].has_key('created_at'):
-        print "Updating potential %s in customer.io" % pot['POTENTIALID']
+        # print "Updating potential %s in customer.io" % pot['POTENTIALID']
         extra_cio_args['created_at'] = cio_customer['customer']['attributes']['created_at']
     else:
-        print "No created date for potential %s. Sending as blank" % pot
+        # print "No created date for potential %s. Sending as blank" % pot
+        pass
     
     if valid_name(pot, 'Course'):
         extra_cio_args['course'] = pot['Course']
