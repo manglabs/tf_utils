@@ -72,7 +72,7 @@ def _get_cio_customer(cio, customer_id):
 
 def send_contact_to_customerio(cio, contact, extra_cio_args=None):
     def valid_name(d, k):
-        return d.has_key(k) and d[k] and not '@' in d[k] and not 'null' in d[k]
+        return d.has_key(k) and d[k] and not '@' in d[k] and d[k] is not 'null'
 
     email = contact['Email'].strip()
 
@@ -97,9 +97,6 @@ def send_contact_to_customerio(cio, contact, extra_cio_args=None):
     cio.identify(**cio_args)
 
 def send_potential_to_customerio(cio, pot, contact):
-    def valid_name(d, k):
-        return d[k] and not '@' in d[k] and not 'null' in d[k]
-
     extra_cio_args = dict()
     cio_customer = _get_cio_customer(cio, contact['Email'])
     if cio_customer and cio_customer['customer']['attributes'].has_key('created_at'):
@@ -109,10 +106,8 @@ def send_potential_to_customerio(cio, pot, contact):
         # print "No created date for potential %s. Sending as blank" % pot
         pass
     
-    if valid_name(pot, 'Course'):
-        extra_cio_args['course'] = pot['Course']
-    if valid_name(pot, 'Stage'):
-        extra_cio_args['funnel_stage'] = pot['Stage']
+    extra_cio_args['course'] = pot.get('Course', '')
+    extra_cio_args['funnel_stage'] = pot.get('Stage', '')
 
     send_contact_to_customerio(cio, contact, extra_cio_args=extra_cio_args)
 
