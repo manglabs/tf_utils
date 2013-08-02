@@ -111,6 +111,8 @@ def send_potential_to_customerio(cio, pot, contact):
     
     if valid_name(pot, 'Course'):
         extra_cio_args['course'] = pot['Course']
+    if valid_name(pot, 'Stage'):
+        extra_cio_args['funnel_stage'] = pot['Stage']
 
     send_contact_to_customerio(cio, contact, extra_cio_args=extra_cio_args)
 
