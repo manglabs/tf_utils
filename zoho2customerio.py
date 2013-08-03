@@ -72,7 +72,7 @@ def _get_cio_customer(cio, customer_id):
 
 def send_contact_to_customerio(cio, contact, extra_cio_args=None):
     def valid_name(d, k):
-        return d.has_key(k) and d[k] and not '@' in d[k] and d[k] is not 'null'
+        return d.has_key(k) and d[k] and (not '@' in d[k]) and (not d[k] == 'null')
 
     email = contact['Email'].strip()
 
