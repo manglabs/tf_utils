@@ -500,6 +500,11 @@ class ThinkfulPerson(object):
         except KeyError:
             return False
 
+    def get(self, k, default):
+        if self.has_key(k):
+            return self[k]
+        return default
+
     def __eq__(self, o):
         # print self.email, o.email, self.email == o.email
         return self.email == o.email
