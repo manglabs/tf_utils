@@ -21,7 +21,7 @@ from mfabrik.zoho.crm import CRM
 from beautiful_soupcon_tf_zoho import (ThinkfulPerson, 
     get_zoho_contacts, _stitch_pages)
 from tf_utils import get_cio, get_crm
-from queue import conn
+from queue import redis_get
 from tf_utils.fixtures import fixtureable
 
 def get_all_potential_contacts(crm, all_contacts):
@@ -234,9 +234,9 @@ def _get_cio_segment(cio, segment_id):
 
 def _get_from_cache(cache_key, _allow_fixture=True):
     if _allow_fixture:
-        pickled = fixtureable('redis', conn.get)(cache_key)
+        pickled = fixtureable('redis', redis_get)(cache_key)
     else:
-        pickled = conn.get(cache_key)
+        pickled = redis_get(cache_key)
     cached = pickle.loads(pickled)
     return cached
 
