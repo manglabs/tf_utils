@@ -1,5 +1,5 @@
 
-import os, json
+import os, json, pdb
 from customerio import CustomerIO
 from mfabrik.zoho.crm import CRM
 
@@ -16,7 +16,7 @@ class CustomerIOAwesome(CustomerIO):
         """
         records = {'customers':[]}
         page=1
-        per_page=100
+        per_page=10
         while True:
             print "Calling func %s for page %s per_page %s" % (f.func_name, page, per_page)
             one_page = f(*fargs, page=page, per_page=per_page, **fkwargs)
@@ -45,6 +45,27 @@ class CustomerIOAwesome(CustomerIO):
         response = self.send_request("GET", query_string, {})
         self.host = self._orig_host
         return json.loads(response)
+
+    def get_customers(self, page=1, per_page=100):
+        # https://manage.customer.io/api/v1/customers?page=2&per=10
+        self._orig_host = self.host
+        self.host = "manage.customer.io"
+        query_string = "%(url_prefix)s/customers?page=%(page)s&%(per_page)s" % (
+            dict(url_prefix=self.url_prefix, page=page, per_page=per_page))
+        response = self.send_request("GET", query_string, {})
+        self.host = self._orig_host
+        return json.loads(response)
+
+    def get_sent_emails(self, customer_id, page=1, per_page=100):
+        # https://manage.customer.io/api/v1/sent_emails?customer_id=wildfeuer05%40gmail.com&page=1&per=10
+        self._orig_host = self.host
+        self.host = "manage.customer.io"
+        query_string = "%(url_prefix)s/sent_emails?customer_id=%(customer_id)s&page=%(page)s&per=%(per_page)s" % (
+            dict(url_prefix=self.url_prefix, customer_id=customer_id, page=page, per_page=per_page))
+        response = self.send_request("GET", query_string, {})
+        self.host = self._orig_host
+        return json.loads(response)
+
 
 def env(name, default=None, required=True):
     value = os.environ.get(name, default)
@@ -82,3 +103,32 @@ def get_stripe():
     import stripe
     stripe.api_key = env('STRIPE_SECRET_KEY')
     return stripe
+
+
+def get_all_customers():
+    customers = []
+    cio = get_cio()
+    # customers = cio._stitch_pages(cio.get_customers)
+    base_dir = '/Users/darrell/projects/thinkful/src/environment/fixtures/cio'
+    fn = '%s/cio.customers.20130901.json' % base_dir
+    fh = open(fn)
+    raw = fh.readlines()
+    fh.close()
+    customers = json.loads(raw[0])
+    print "loaded %s customers from '%s'" % (len(customers['customers']), fn)
+    
+    for customer in customers['customers']:
+        id = customer['id']
+        id = id.replace(' ', '%20')
+        fn = '%s/sent_emails/%s' % (base_dir, id)
+        if os.path.exists(fn):
+            print "Not resaving '%s'" % fn
+        else:
+            print "Saving sent emails to %s" % fn
+            raw = cio.get_sent_emails(id)
+            fh = open(fn, 'w')
+            fh.write(json.dumps(raw))
+            fh.close()
+
+        # pdb.set_trace()
+
