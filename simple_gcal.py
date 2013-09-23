@@ -85,6 +85,15 @@ class SimpleGCal(object):
         new_event = self.cal_client.InsertEvent(event)
         return new_event
 
+    def add_reminder(self, event, method, minutes):
+        for when in event.when:
+            when.reminder.append(gdata.data.Reminder(method=method, minutes=str(minutes)))
+        return self.cal_client.Update(event)
+
+    def invite(self, event, email):
+        event.who.append(gdata.data.Who(email=email, value=email))
+        return self.cal_client.Update(event)
+
     def delete_single_event(self, start_date, end_date, title):
         """Note this is not done by ID for convenience to the caller. 
         But we don't allow ambiguity AFAIK."""
