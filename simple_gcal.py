@@ -76,6 +76,7 @@ class SimpleGCal(object):
             return False
 
         event = gdata.calendar.data.CalendarEventEntry()
+        event.send_event_notifications = gdata.calendar.data.SendEventNotificationsProperty(value='true')
         event.title = atom.data.Title(text=title)
         if content:
             event.content = atom.data.Content(text=content)
@@ -90,8 +91,9 @@ class SimpleGCal(object):
             when.reminder.append(gdata.data.Reminder(method=method, minutes=str(minutes)))
         return self.cal_client.Update(event)
 
-    def invite(self, event, email):
-        event.who.append(gdata.data.Who(email=email, value=email))
+    def invite(self, event, emails):
+        for email in emails:
+            event.who.append(gdata.data.Who(email=email, value=email))
         return self.cal_client.Update(event)
 
     def delete_single_event(self, start_date, end_date, title):
