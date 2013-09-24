@@ -71,7 +71,7 @@ class SimpleGCal(object):
                 return False
         return True
 
-    def add_single_event(self, start_date, end_date, title, content=None, allow_dup=True):
+    def add_single_event(self, start_date, end_date, title, content=None, allow_dup=True, invitees=[]):
         if not allow_dup and not self.is_available(start_date, end_date):
             return False
 
@@ -83,6 +83,9 @@ class SimpleGCal(object):
         event.when.append(gdata.data.When(
             start=self._dt2gdt(start_date), end=self._dt2gdt(end_date)))
 
+        for email in invitees:
+            event.who.append(gdata.data.Who(email=email, value=email))
+
         new_event = self.cal_client.InsertEvent(event)
         return new_event
 
@@ -92,6 +95,10 @@ class SimpleGCal(object):
         return self.cal_client.Update(event)
 
     def invite(self, event, emails):
+        # Note because event is already created these invitees won't receive 
+        # email notifications that they've been invited. But they WILL receive
+        # future emails: updates, reminders, cancellations, etc as per the event's 
+        # original settings
         for email in emails:
             event.who.append(gdata.data.Who(email=email, value=email))
         return self.cal_client.Update(event)
