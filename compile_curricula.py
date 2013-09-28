@@ -76,8 +76,8 @@ def splice_and_save(schm, curr, outf):
     # this is done here and not at the beginning because we need to modify a
     # dependency - Tag - first.
     from bs4 import BeautifulSoup
-    schema = BeautifulSoup(open(schm, 'r').read(), 'xml')
-    curriculum = BeautifulSoup(open(curr, 'r').read(), 'xml')
+    schema = BeautifulSoup(open(schm, 'r').read())
+    curriculum = BeautifulSoup(open(curr, 'r').read())
     curriculum = add_numbers(curriculum)
     curriculum = splice(schema, curriculum)
     with open(outf, 'w') as f:
