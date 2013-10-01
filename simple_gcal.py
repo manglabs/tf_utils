@@ -43,9 +43,9 @@ class SimpleGCal(object):
         feed = self.cal_client.GetAllCalendarsFeed()
         return (feed.title.text, feed.entry)
     
-    def get_events(self, start_date, end_date):
+    def get_events(self, start_date, end_date, max_results=100):
         # datetimes *must* be in UTC
-        query = gdata.calendar.client.CalendarEventQuery(
+        query = gdata.calendar.client.CalendarEventQuery(max_results=max_results,
             start_min=self._dt2gdt(start_date), start_max=self._dt2gdt(end_date))
         feed = self.cal_client.GetCalendarEventFeed(q=query)
         return feed.entry
