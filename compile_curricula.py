@@ -21,10 +21,10 @@ from os import listdir, chdir, getcwd
 import re
 
 
-def add_numbers(curriculum):
+def derive_tags(curriculum):
     """
-    takes a BS4 object; it's a helper for the next function.
-    this numbers the units, lessons, assigments in their own orders.
+    Add tags to the doc which we derive from the raw curric XML.
+    This is cleaner than manually adding them in the curric XML:
     """
 
     types = ['content', 'project', 'task', 'self-assessment']
@@ -35,15 +35,23 @@ def add_numbers(curriculum):
         num.string = '%s %d' % (name, index) if name else str(index)
         tag.insert(0, num)
 
+    def progress(tag):
+        if tag.find('progress'):
+            # don't add progress tag when there is one
+            return
+        progress = curriculum.new_tag('progress')
+        progress.string = tag.find('name').text
+        tag.insert(3, progress)
+
     for i, unit in enumerate(curriculum('unit')):
         number(i + 1, unit, 'Unit')
         for j, lesson in enumerate(unit('lesson')):
             number(j + 1, lesson, 'Lesson')
             for k, assignment in enumerate(lesson.find('assignments')(types)):
                 number(k + 1, assignment)
+                progress(assignment)
 
     return curriculum
-
 
 def splice(schema, curriculum):
     for element in schema():
@@ -78,13 +86,13 @@ def splice_and_save(schm, curr, outf):
     from bs4 import BeautifulSoup
     schema = BeautifulSoup(open(schm, 'r').read())
     curriculum = BeautifulSoup(open(curr, 'r').read())
-    curriculum = add_numbers(curriculum)
+    curriculum = derive_tags(curriculum)
     curriculum = splice(schema, curriculum)
     with open(outf, 'w') as f:
         f.write(str(curriculum))
 
 
-def get_schema_curricula_pairs(root_dir, courses=['FEWD-001']):
+def get_schema_curricula_pairs(root_dir, courses=['FEWD-001', 'PIP-001']):
     rets = []
     if root_dir[0] == '.':
         root_dir = join(getcwd(), root_dir[2:])
