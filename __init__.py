@@ -1,5 +1,6 @@
 
 import os, json
+from datetime import datetime
 from customerio import CustomerIO
 from mfabrik.zoho.crm import CRM
 
@@ -45,6 +46,28 @@ class CustomerIOAwesome(CustomerIO):
         response = self.send_request("GET", query_string, {})
         self.host = self._orig_host
         return json.loads(response)
+
+    def get_customer_resilient(self, id, demands, timeout=20):
+        """Same as get_customer() except it waits for 'timeout' seconds for
+        CIO to have the record and all keys in demands list of lists
+
+        EG
+            demands = [['customer', 'id'], ['customer', 'attributes','course']]
+        """
+        started = datetime.now()
+        while True:
+            if (datetime.now() - started).seconds > timeout:
+                raise Exception("'%s' timed out after %s seconds" % (f, timeout))
+            try:
+                res = self.get_customer(id)
+                for demand_list in demands:
+                    value = res
+                    for demand in demand_list:
+                        value = value[demand]
+                return res
+            except Exception, e:
+                pass
+            sleep(1)
 
 def env(name, default=None, required=True):
     value = os.environ.get(name, default)
