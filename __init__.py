@@ -1,5 +1,6 @@
 
 import os, json
+from time import sleep
 from datetime import datetime
 from customerio import CustomerIO
 from mfabrik.zoho.crm import CRM
