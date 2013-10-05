@@ -48,7 +48,7 @@ class CustomerIOAwesome(CustomerIO):
         self.host = self._orig_host
         return json.loads(response)
 
-    def get_customer_resilient(self, id, demands, timeout=20):
+    def get_customer_resilient(self, id, demands, timeout=600):
         """Same as get_customer() except it waits for 'timeout' seconds for
         CIO to have the record and all keys in demands list of lists
 
@@ -58,7 +58,8 @@ class CustomerIOAwesome(CustomerIO):
         started = datetime.now()
         while True:
             if (datetime.now() - started).seconds > timeout:
-                raise Exception("'%s' timed out after %s seconds" % (f, timeout))
+                raise Exception("'get_customer' timed out looking up '%s' after %s seconds" \
+                    % (id, timeout))
             try:
                 res = self.get_customer(id)
                 for demand_list in demands:
