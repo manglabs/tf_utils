@@ -538,7 +538,7 @@ class FunnelStage(object):
     __repr__ = __str__
 
 
-def _stitch_pages(f, *fargs, **fkwargs):
+def _stitch_pages(f, verbose=True, *fargs, **fkwargs):
     """Zoho limits the number of records per request to 200.
     We use this to combine all results behind the scenes into a
     single result set.
@@ -549,7 +549,9 @@ def _stitch_pages(f, *fargs, **fkwargs):
     from_index = 1
     to_index = 200
     while True:
-        print "Calling func %s for page index %s to %s" % (f.func_name, from_index, to_index)
+        # if not fkwargs.has_key('verbose') or fkwargs['verbose']:
+        if verbose:
+            print "Calling func %s for page index %s to %s" % (f.func_name, from_index, to_index)
         one_page = f(from_index=from_index, to_index=to_index, *fargs, **fkwargs)
         records.extend(one_page)
         if len(one_page) == 0 or len(one_page) < 200:
