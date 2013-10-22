@@ -36,8 +36,7 @@ def derive_tags(curriculum):
         tag.insert(0, num)
 
     def progress(tag):
-        if tag.find('progress'):
-            # don't add progress tag when there is one
+        if tag.find('progress') or tag.attrs.get('progress')=='false':
             return
         progress = curriculum.new_tag('progress')
         progress.string = tag.find('name').text
