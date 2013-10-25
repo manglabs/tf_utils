@@ -4,6 +4,8 @@ from time import sleep
 from datetime import datetime
 from customerio import CustomerIO
 from mfabrik.zoho.crm import CRM
+from functools import wraps
+from flask import redirect
 
 
 class CustomerIOAwesome(CustomerIO):
@@ -107,3 +109,16 @@ def get_stripe():
     import stripe
     stripe.api_key = env('STRIPE_SECRET_KEY')
     return stripe
+
+
+def requires_https(f, code=302):
+    """defaults to temp. redirect (301 is permanent)"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if env('HTTPS_ENABLED', 'false', required=False).lower() == 'true':
+            if request.headers.get('X-Forwarded-Proto', 'http') != 'https':
+                return redirect(request.url.replace('http://', 'https://'), code=code)
+        return f(*args, **kwargs)
+    return decorated
+
+
