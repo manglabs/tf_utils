@@ -5,7 +5,7 @@ from datetime import datetime
 from customerio import CustomerIO
 from mfabrik.zoho.crm import CRM
 from functools import wraps
-from flask import redirect
+from flask import redirect, request
 
 
 class CustomerIOAwesome(CustomerIO):
