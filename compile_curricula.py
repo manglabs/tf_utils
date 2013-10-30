@@ -91,7 +91,8 @@ def splice_and_save(schm, curr, outf):
         f.write(str(curriculum))
 
 
-def get_schema_curricula_pairs(root_dir, courses=['FEWD-001', 'PIP-001', 'RBY-001', 'TEST-001', 'TEST-002']):
+def get_schema_curricula_pairs(root_dir, courses=['FEWD-001', 'PIP-001', 'RBY-001', 
+        'ROR-001', 'TEST-001', 'TEST-002']):
     rets = []
     if root_dir[0] == '.':
         root_dir = join(getcwd(), root_dir[2:])
