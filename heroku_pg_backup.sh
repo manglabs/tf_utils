@@ -26,4 +26,4 @@ UPDATE contacts SET tf_login = '_' || tf_login WHERE tf_login IS NOT NULL;
 EOF`
 if [ `echo $?` -ne 0 ]; then echo "Last cmd failed! Aborting."; exit 100; fi
 
-echo "Congratulations! You put the 'suc' in 'success'. Your backup worked, friend!"
+echo "Congratulations! Your backup worked, friend!"
