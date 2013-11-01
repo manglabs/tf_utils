@@ -18,8 +18,8 @@ if [ `echo $?` -ne 0 ]; then echo "Last cmd failed! Aborting."; exit 100; fi
 
 echo "Sanitizing backup data. Please hold."
 psql_output=`psql tf_prod_backup << EOF
-ALTER TABLE users DROP COLUMN password;
-ALTER TABLE users DROP COLUMN salt;
+UPDATE users SET password='';
+UPDATE users SET salt='';
 UPDATE users SET tf_login='_' || tf_login;
 UPDATE contacts SET email = '_' || email;
 UPDATE contacts SET tf_login = '_' || tf_login WHERE tf_login IS NOT NULL;
