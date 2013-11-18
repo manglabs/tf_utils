@@ -32,7 +32,7 @@ if [ `echo $?` -ne 0 ]; then echo "Last cmd failed! Aborting."; exit 100; fi
 
 echo "Dumping sanitized database so you can share it with others"
 dump_path=$1
-pg_dump --no-owner tf_prod_backup > $dump_path"tf_backup.dump" 
+pg_dump --no-owner --no-acl tf_prod_backup > $dump_path"tf_backup.dump" 
 if [ `echo $?` -ne 0 ]; then echo "Last cmd failed! Aborting."; exit 100; fi
 
 echo "Congratulations! Your backup worked!"
