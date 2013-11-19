@@ -64,6 +64,27 @@ def splice(schema, curriculum):
 
     return curriculum
 
+class BSPatcher(object):
+
+    PATTERNS = [
+        (' < ',  '~&lt;~'),
+        (' > ',  '~&gt;~'),
+        ('<%= ', '~lt%=~'),
+        ('<%',   '~lt%~'),
+        ('%>',   '~%gt~'),
+        ('=>',   '~eqgt~'),
+    ]
+    def encode(self, t):
+        for p in BSPatcher.PATTERNS:
+            t = t.replace(p[0], p[1])
+        return t
+
+    def decode(self, t):
+        for p in BSPatcher.PATTERNS:
+            t = t.replace(p[1], p[0])
+        return t
+
+_bs_patcher = BSPatcher()
 
 def splice_and_save(schm, curr, outf):
     """
@@ -83,16 +104,21 @@ def splice_and_save(schm, curr, outf):
     # this is done here and not at the beginning because we need to modify a
     # dependency - Tag - first.
     from bs4 import BeautifulSoup
-    schema = BeautifulSoup(open(schm, 'r').read())
-    curriculum = BeautifulSoup(open(curr, 'r').read())
+    with open(schm, 'r') as schm_fh:
+        schema = BeautifulSoup(schm_fh.read())
+    with open(curr, 'r') as curr_fh:
+        curriculum = curr_fh.read()
+    curriculum = _bs_patcher.encode(curriculum)
+    curriculum = BeautifulSoup(curriculum)
     curriculum = derive_tags(curriculum)
     curriculum = splice(schema, curriculum)
+    curriculum = str(curriculum)
+    curriculum = _bs_patcher.decode(curriculum)
     with open(outf, 'w') as f:
         f.write(str(curriculum))
 
 
-def get_schema_curricula_pairs(root_dir, courses=['FEWD-001', 'PIP-001', 'RBY-001', 
-        'ROR-001', 'TEST-001', 'TEST-002']):
+def get_schema_curricula_pairs(root_dir, courses):
     rets = []
     if root_dir[0] == '.':
         root_dir = join(getcwd(), root_dir[2:])
@@ -116,8 +142,12 @@ def get_schema_curricula_pairs(root_dir, courses=['FEWD-001', 'PIP-001', 'RBY-00
 def main():
     parser = OptionParser("%prog [--root_dir ./lib/curricula]")
     parser.add_option("--root_dir", action="store", default="./lib/curricula")
+    parser.add_option("--courses", action="append")
     (options, args) = parser.parse_args()
-    for triplet in get_schema_curricula_pairs(options.root_dir):
+    if not options.courses:
+        options.courses = ['FEWD-001', 'PIP-001', 'RBY-001', 'ROR-001', 'TEST-001', 'TEST-002']
+    
+    for triplet in get_schema_curricula_pairs(options.root_dir, options.courses):
         splice_and_save(*triplet)
 
 if __name__ == '__main__':
