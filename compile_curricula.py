@@ -18,6 +18,7 @@ but the rootdir option can move curricula to anywhere
 from optparse import OptionParser
 from os.path import join
 from os import listdir, chdir, getcwd
+from bs4.builder._lxml import LXMLTreeBuilder
 import re
 
 
@@ -86,6 +87,19 @@ class BSPatcher(object):
 
 _bs_patcher = BSPatcher()
 
+class CurricTreeBuilder(LXMLTreeBuilder):
+    """We have our own <codesnippet> whose contents (especially whitespace) 
+    should be preserved exactly. But since it's custom BeautifulSoup 
+    doesn't know that. This custom builder tells BeautifulSoup.
+
+    NOTE:
+        I don't know if LXMLTreeBuilder is going to be the right parser in each env.
+        BS4 seems to have several impls for diff underlying parsing libraries.
+        Thus, This subclass may require changes upon upgrading versions of Python or
+        on different platforms.
+    """
+    preserve_whitespace_tags = set(['codesnippet'])
+
 def splice_and_save(schm, curr, outf):
     """
     this function takes in a curriculum schema and a curriculum xml file and
@@ -109,7 +123,7 @@ def splice_and_save(schm, curr, outf):
     with open(curr, 'r') as curr_fh:
         curriculum = curr_fh.read()
     curriculum = _bs_patcher.encode(curriculum)
-    curriculum = BeautifulSoup(curriculum)
+    curriculum = BeautifulSoup(curriculum, builder=CurricTreeBuilder())
     curriculum = derive_tags(curriculum)
     curriculum = splice(schema, curriculum)
     curriculum = str(curriculum)
