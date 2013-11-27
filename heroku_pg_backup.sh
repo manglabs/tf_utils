@@ -37,4 +37,9 @@ pg_dump --no-owner --no-acl tf_prod_raw_backup > $BACKUP
 if [ `echo $?` -ne 0 ]; then echo "Last cmd failed! Aborting."; exit 100; fi
 echo "Congratulations! Your backup worked!"
 
+# this is weird, but want to automate backup process completely
 echo "Committing changes to environment repo"
+cd $ENV_REPO_PATH
+git add $BACKUP
+git commit -m "new pg backup dump as of `date`"
+#git push origin master  # uncomment this once this branch is on master
