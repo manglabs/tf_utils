@@ -13,7 +13,7 @@ createdb -U postgres tf_prod_raw_backup
 if [ `echo $?` -ne 0 ]; then echo "Last cmd failed! Aborting."; exit 100; fi
 
 echo "Retrieving most recent pg_backup from Heroku."
-heroku pgbackups:capture --expire
+heroku pgbackups:capture --expire > /dev/null
 curl -o ${TEMP_BACKUP_PATH} `heroku pgbackups:url --app tf-pysplash-prod`
 if [ `echo $?` -ne 0 ]; then echo "Last cmd failed! Aborting."; exit 100; fi
 
