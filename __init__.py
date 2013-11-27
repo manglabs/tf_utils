@@ -55,7 +55,7 @@ class CustomerIOAwesome(CustomerIO):
         CIO to have the record and all keys in demands list of lists
 
         EG
-            demands = [['customer', 'id'], ['customer', 'attributes','course']]
+            demands = [(['customer', 'id'], False), (['customer', 'attributes','course'], False)]
         """
         started = datetime.now()
         while True:
@@ -64,10 +64,12 @@ class CustomerIOAwesome(CustomerIO):
                     % (id, timeout))
             try:
                 res = self.get_customer(id)
-                for demand_list in demands:
+                for demand_list, can_be_empty in demands:
                     value = res
                     for demand in demand_list:
                         value = value[demand]
+                        if not can_be_empty and not value:
+                            raise Exception("Set but no value yet.")
                 return res
             except Exception, e:
                 pass
