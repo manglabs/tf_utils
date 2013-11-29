@@ -50,9 +50,22 @@ class SimpleGCal(object):
         feed = self.cal_client.GetCalendarEventFeed(q=query)
         return feed.entry
 
-    def is_available(self, start_date, end_date):
+    def is_available(self, start_date, end_date, all_day_events_are_busy):
         # queries google. Simpler for single availability window.
-        return len(self.get_events(start_date, end_date)) == 0
+        events = self.get_events(start_date, end_date)
+        if len(events) == 0:
+            # no events of any kind: we're available!
+            return True
+        if all_day_events_are_busy and len(events) > 0:
+            # either all day or timed events mean we're not available
+            return False
+
+        for event in events:
+            for when in event.when:
+                if len(when.start) > 10:
+                    # timed event in our window! We're busy.
+                    return False
+        return True
 
     def is_available_local(self, events, start_date, end_date, all_day_events_are_busy):
         # doesn't query google; better when dealing 
@@ -71,8 +84,9 @@ class SimpleGCal(object):
                 return False
         return True
 
-    def add_single_event(self, start_date, end_date, title, content=None, allow_dup=True, invitees=[]):
-        if not allow_dup and not self.is_available(start_date, end_date):
+    def add_single_event(self, start_date, end_date, title, content=None, 
+            allow_dup=True, all_day_events_are_busy=False, invitees=[]):
+        if not allow_dup and not self.is_available(start_date, end_date, all_day_events_are_busy):
             return False
 
         event = gdata.calendar.data.CalendarEventEntry()
