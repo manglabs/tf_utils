@@ -1,7 +1,9 @@
 #!/bin/sh
 
 # to run this script you must have access privileges for Thinkful's production
-# Heroku account.  
+# Heroku account.  It will auto commit the backup to environment repo, but 
+# you'll need to manually push this to origin master to share new backups
+
 BACKUP=$FIXTURE_ROOT/postgres/tf_backup.dump
 
 echo "Deleting existing backup"
