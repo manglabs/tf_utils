@@ -42,4 +42,3 @@ echo "Committing changes to environment repo"
 cd $ENV_REPO_PATH
 git add $BACKUP
 git commit -m "new pg backup dump as of `date`"
-#git push origin master  # uncomment this once this branch is on master
