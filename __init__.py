@@ -1,5 +1,5 @@
 
-import os, json
+import os, json, requests
 from time import sleep
 from datetime import datetime
 from customerio import CustomerIO
@@ -123,4 +123,25 @@ def requires_https(f, code=302):
         return f(*args, **kwargs)
     return decorated
 
+def seo_proxy(f):
+    """Redirect search bots to brombone so that we can SEO dynamic (angular) apps"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if '?_escaped_fragment_=' in request.url:
+            to_proxy = request.url
+            if to_proxy.startswith('http://localhost'):
+                # Unit testing doesn't honor port & always uses localhost. Damn.
+                to_proxy = to_proxy.replace('http://localhost/', 'www.thinkful.com/')
+            elif to_proxy.startswith('http://'):
+                to_proxy = to_proxy[len('http://'):]
+            elif to_proxy.startswith('https://'):
+                to_proxy = to_proxy[len('https://'):]
+            to_proxy = to_proxy.replace('?_escaped_fragment_=', '')
+            # Lets testing (which doesn't run on thinkful.com access brombone live cache)
+            to_proxy = to_proxy.replace(env('HOSTNAME'), 'www.thinkful.com')
+            to_proxy = "http://thinkful.brombonesnapshots.com/%s" % to_proxy
+            s = requests.Session()
+            return s.get(to_proxy).text
+        return f(*args, **kwargs)
+    return decorated
 
