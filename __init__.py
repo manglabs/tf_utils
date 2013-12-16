@@ -123,23 +123,49 @@ def requires_https(f, code=302):
         return f(*args, **kwargs)
     return decorated
 
-def seo_proxy(f):
+
+
+# Must all be in lower case!
+SEM_USER_AGENTS = ['adsbot-google']
+ALL_USER_AGENTS = ['googlebot', 'bingbot', 'slurp', 'facebookexternalhit', 'baiduspider', 'iaskspider', 'adsbot-google']
+
+def _url2brombone(url):
+    if url.startswith('http://localhost/'):
+        # Unit testing doesn't honor port & always uses localhost. Damn.
+        url = url.replace('http://localhost/', 'www.thinkful.com/')
+    if url.startswith('http://localhost:5000/'):
+        # Unit testing doesn't honor port & always uses localhost. Damn.
+        url = url.replace('http://localhost:5000/', 'www.thinkful.com/')
+    elif url.startswith('http://'):
+        url = url[len('http://'):]
+    elif url.startswith('https://'):
+        url = url[len('https://'):]
+    url = url.replace('?_escaped_fragment_=', '')
+    url = "http://thinkful.brombonesnapshots.com/%s" % url
+    return url
+
+def seo_proxy(f, user_agents=ALL_USER_AGENTS):
     """Redirect search bots to brombone so that we can SEO dynamic (angular) apps"""
+
+    def _should_proxy():
+        if '?_escaped_fragment_=' in request.url:
+            # ajax request
+            return True
+        req_ua = request.headers.get('User-Agent')
+        if not req_ua:
+            # no useragent.
+            return False
+        req_ua = req_ua.lower()
+        for ua in user_agents:
+            if ua in req_ua:
+                # from a specific user-agent!
+                return True
+        return False
+
     @wraps(f)
     def decorated(*args, **kwargs):
-        if '?_escaped_fragment_=' in request.url:
-            to_proxy = request.url
-            if to_proxy.startswith('http://localhost'):
-                # Unit testing doesn't honor port & always uses localhost. Damn.
-                to_proxy = to_proxy.replace('http://localhost/', 'www.thinkful.com/')
-            elif to_proxy.startswith('http://'):
-                to_proxy = to_proxy[len('http://'):]
-            elif to_proxy.startswith('https://'):
-                to_proxy = to_proxy[len('https://'):]
-            to_proxy = to_proxy.replace('?_escaped_fragment_=', '')
-            # Lets testing (which doesn't run on thinkful.com access brombone live cache)
-            to_proxy = to_proxy.replace(env('HOSTNAME'), 'www.thinkful.com')
-            to_proxy = "http://thinkful.brombonesnapshots.com/%s" % to_proxy
+        if _should_proxy():
+            to_proxy = _url2brombone(request.url)
             s = requests.Session()
             return s.get(to_proxy).text
         return f(*args, **kwargs)
