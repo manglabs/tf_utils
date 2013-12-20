@@ -159,7 +159,7 @@ def main():
     parser.add_option("--courses", action="append")
     (options, args) = parser.parse_args()
     if not options.courses:
-        options.courses = ['FEWD-001', 'PIP-001', 'RBY-001', 'ROR-001', 'TEST-001', 'TEST-002']
+        options.courses = ['FEWD-001', 'PIP-001', 'RBY-001', 'ROR-001', 'IOS-001', 'TEST-001', 'TEST-002']
     
     for triplet in get_schema_curricula_pairs(options.root_dir, options.courses):
         splice_and_save(*triplet)
