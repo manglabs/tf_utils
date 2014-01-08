@@ -4,6 +4,7 @@
 # Heroku account.  It will auto commit the backup to environment repo, but 
 # you'll need to manually push this to origin master to share new backups
 
+HEROKU_APP="tf-pysplash-prod"
 BACKUP=$FIXTURE_ROOT/postgres/tf_backup.dump
 
 echo "Deleting existing backup"
@@ -15,7 +16,8 @@ createdb -U postgres tf_prod_raw_backup
 if [ `echo $?` -ne 0 ]; then echo "Last cmd failed! Aborting."; exit 100; fi
 
 echo "Retrieving most recent pg_backup from Heroku."
-heroku pgbackups:capture --expire > /dev/null
+heroku pgbackups:capture --expire --app $HEROKU_APP > /dev/null
+if [ `echo $?` -ne 0 ]; then echo "Last cmd failed! Aborting."; exit 100; fi
 curl -o ${TEMP_BACKUP_PATH} `heroku pgbackups:url --app tf-pysplash-prod`
 if [ `echo $?` -ne 0 ]; then echo "Last cmd failed! Aborting."; exit 100; fi
 
@@ -23,6 +25,7 @@ echo "Restoring backup to tf_prod_backup"
 pg_restore --no-owner --no-acl ${TEMP_BACKUP_PATH} -d tf_prod_raw_backup
 if [ `echo $?` -ne 0 ]; then echo "Last cmd failed! Aborting."; exit 100; fi
 rm ${TEMP_BACKUP_PATH}
+if [ `echo $?` -ne 0 ]; then echo "Last cmd failed! Aborting."; exit 100; fi
 
 echo "Sanitizing backup data. Please hold."
 psql_output=`psql -U postgres tf_prod_raw_backup << EOF
